@@ -1,46 +1,63 @@
 package com.autobots.automanager.servicos;
-import java.util.*;
-import org.springframework.beans.BeanUtils;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-import static org.springframework.http.HttpStatus.*;
 import com.autobots.automanager.entidades.*;
 import com.autobots.automanager.repositorios.*;
+import com.autobots.automanager.requisicoes.DocumentoRequisicao;
+
 @Service
 @Transactional
 public class DocumentoServico {
- private final DocumentoRepositorio repositorio;
- private final ClienteRepositorio clientes;
- private final ClienteServico clienteServico;
- public DocumentoServico(DocumentoRepositorio repositorio, ClienteRepositorio clientes, ClienteServico clienteServico) {
-  this.repositorio=repositorio; this.clientes=clientes; this.clienteServico=clienteServico;
- }
- public List<Documento> listar(Long clienteId) {
-  if (clienteId == null) return repositorio.findAll();
-  Cliente c = clienteServico.buscar(clienteId);
-  return c.getDocumentos();
- }
- public Optional<Long> clienteId(long id) {
-  return clientes.findByDocumentosId(id).map(Cliente::getId);
- }
- public Documento buscar(long id) { return repositorio.findById(id).orElseThrow(() -> new ResponseStatusException(NOT_FOUND,"Documento nao encontrado")); }
- public Documento criar(long clienteId, Documento d) {
-  if (d.getId()!=null) throw new ResponseStatusException(BAD_REQUEST,"Nao envie ID no cadastro");
-  Cliente c=clienteServico.buscar(clienteId);
-  d=repositorio.saveAndFlush(d); c.getDocumentos().add(d);
-  clientes.saveAndFlush(c); return d;
- }
- public Documento atualizar(long id, Documento dados) {
-  Documento existente=buscar(id);
-  if (dados.getId()!=null && !dados.getId().equals(id)) throw new ResponseStatusException(BAD_REQUEST,"ID divergente da URL");
-  BeanUtils.copyProperties(dados,existente,"id");
-  return repositorio.saveAndFlush(existente);
- }
- public void excluir(long id) {
-  Documento existente=buscar(id);
-  Optional<Cliente> dono=clientes.findByDocumentosId(id);
-  if (dono.isPresent()) { Cliente c=dono.get(); c.getDocumentos().removeIf(item -> item.getId().equals(id)); clientes.saveAndFlush(c); }
-  else { repositorio.delete(existente); repositorio.flush(); }
- }
+    private final DocumentoRepositorio repositorio;
+    private final UsuarioRepositorio usuarios;
+    private final UsuarioServico usuarioServico;
+
+    public DocumentoServico(DocumentoRepositorio repositorio, UsuarioRepositorio usuarios, UsuarioServico usuarioServico) {
+        this.repositorio = repositorio;
+        this.usuarios = usuarios;
+        this.usuarioServico = usuarioServico;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Documento> listar(Long usuarioId) {
+        if (usuarioId == null) return repositorio.findAll(org.springframework.data.domain.Sort.by("id"));
+        return usuarioServico.buscar(usuarioId).getDocumentos().stream().sorted(Comparator.comparing(Documento::getId)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Documento buscar(long id) {
+        return repositorio.findById(id).orElseThrow(() -> Erros.naoEncontrado("Documento nao encontrado"));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Long> usuarioDe(long id) {
+        return usuarios.idPorDocumento(id);
+    }
+
+    public Documento criar(long usuarioId, DocumentoRequisicao dados) {
+        Usuario usuario = usuarioServico.buscar(usuarioId);
+        if (repositorio.existsByNumero(dados.getNumero().strip())) throw Erros.conflito("Ja existe documento com este numero");
+        Documento documento = repositorio.saveAndFlush(Conversor.documento(dados));
+        usuario.getDocumentos().add(documento);
+        usuarios.saveAndFlush(usuario);
+        return documento;
+    }
+
+    public Documento atualizar(long id, DocumentoRequisicao dados) {
+        Documento documento = buscar(id);
+        if (repositorio.existsByNumeroAndIdNot(dados.getNumero().strip(), id)) throw Erros.conflito("Ja existe documento com este numero");
+        return repositorio.saveAndFlush(Conversor.aplicar(documento, dados));
+    }
+
+    public void excluir(long id) {
+        Documento documento = buscar(id);
+        Optional<Long> usuario = usuarioDe(id);
+        if (usuario.isPresent()) usuarioServico.buscar(usuario.get()).getDocumentos().remove(documento);
+        else repositorio.delete(documento);
+        repositorio.flush();
+    }
 }

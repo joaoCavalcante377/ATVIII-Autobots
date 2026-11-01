@@ -1,26 +1,20 @@
 package com.autobots.automanager.entidades;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.hateoas.server.core.Relation;
 
-import lombok.Data;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
-
-@Data
-@org.springframework.hateoas.server.core.Relation(itemRelation = "telefone", collectionRelation = "telefones")
+@Getter
+@Setter
 @Entity
+@Relation(itemRelation = "telefone", collectionRelation = "telefones")
 public class Telefone {
-	@Id()
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
-	@Column
-	@NotBlank
-	private String ddd;
-	@Column
-	@NotBlank
-	private String numero;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false)
+    private String ddd;
+    @Column(nullable = false)
+    private String numero;
 }

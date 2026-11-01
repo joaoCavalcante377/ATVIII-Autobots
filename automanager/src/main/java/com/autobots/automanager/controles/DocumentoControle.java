@@ -1,13 +1,14 @@
 package com.autobots.automanager.controles;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 import jakarta.validation.Valid;
 import org.springframework.hateoas.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.autobots.automanager.entidades.Documento;
-import com.autobots.automanager.representacoes.DocumentoRepresentacao;
+import com.autobots.automanager.entidades.*;
+import com.autobots.automanager.representacoes.*;
+import com.autobots.automanager.requisicoes.DocumentoRequisicao;
 import com.autobots.automanager.servicos.DocumentoServico;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 @RequestMapping("/documentos")
@@ -21,21 +22,12 @@ public class DocumentoControle {
     }
 
     @GetMapping
-    public CollectionModel<EntityModel<Documento>> listar(@RequestParam(required = false) Long clienteId) {
-        var registros = servico.listar(clienteId);
-        var proprio = linkTo(methodOn(DocumentoControle.class).listar(clienteId)).withSelfRel().expand();
-        if (clienteId != null) {
-            proprio = proprio.andAffordance(afford(methodOn(DocumentoControle.class).criarDocumento(clienteId, null)));
-        }
-        var modelo = CollectionModel.of(registros.stream().map(representacao::toModel).toList(), proprio,
-                linkTo(methodOn(RaizControle.class).inicio()).withRel("inicio").expand())
-                .withFallbackType(EntityModel.class, Documento.class);
-        if (clienteId != null) {
-            modelo.add(linkTo(methodOn(ClienteControle.class).buscar(clienteId)).withRel("cliente").expand());
-        } else {
-            modelo.add(linkTo(methodOn(ClienteControle.class).listar()).withRel("clientes").expand());
-        }
-        return modelo;
+    public CollectionModel<EntityModel<Documento>> listar(@RequestParam(required = false) Long usuarioId) {
+        var registros = servico.listar(usuarioId);
+        var proprio = linkTo(methodOn(DocumentoControle.class).listar(usuarioId)).withSelfRel().expand();
+        if (usuarioId == null) return Colecoes.de(registros, representacao, Documento.class, proprio);
+        return Colecoes.de(registros, representacao, Documento.class,
+                proprio.andAffordance(afford(methodOn(DocumentoControle.class).criarDocumento(usuarioId, null))), Ligacoes.usuario(usuarioId, "usuario"));
     }
 
     @GetMapping("/{id}")
@@ -44,14 +36,13 @@ public class DocumentoControle {
     }
 
     @PostMapping(consumes = "application/json")
-    public ResponseEntity<EntityModel<Documento>> criarDocumento(@RequestParam long clienteId,
-            @Valid @RequestBody Documento dados) {
-        var modelo = representacao.toModel(servico.criar(clienteId, dados));
-        return ResponseEntity.created(modelo.getRequiredLink("self").toUri()).body(modelo);
+    public ResponseEntity<EntityModel<Documento>> criarDocumento(@RequestParam long usuarioId, @Valid @RequestBody DocumentoRequisicao dados) {
+        var modelo = representacao.toModel(servico.criar(usuarioId, dados));
+        return ResponseEntity.created(modelo.getRequiredLink(IanaLinkRelations.SELF).toUri()).body(modelo);
     }
 
     @PutMapping(value = "/{id}", consumes = "application/json")
-    public EntityModel<Documento> atualizarDocumento(@PathVariable long id, @Valid @RequestBody Documento dados) {
+    public EntityModel<Documento> atualizarDocumento(@PathVariable long id, @Valid @RequestBody DocumentoRequisicao dados) {
         return representacao.toModel(servico.atualizar(id, dados));
     }
 

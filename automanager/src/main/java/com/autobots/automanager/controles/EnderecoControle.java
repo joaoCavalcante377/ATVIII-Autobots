@@ -1,13 +1,14 @@
 package com.autobots.automanager.controles;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 import jakarta.validation.Valid;
 import org.springframework.hateoas.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.autobots.automanager.entidades.Endereco;
-import com.autobots.automanager.representacoes.EnderecoRepresentacao;
+import com.autobots.automanager.representacoes.*;
+import com.autobots.automanager.requisicoes.EnderecoRequisicao;
 import com.autobots.automanager.servicos.EnderecoServico;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 @RequestMapping("/enderecos")
@@ -21,21 +22,21 @@ public class EnderecoControle {
     }
 
     @GetMapping
-    public CollectionModel<EntityModel<Endereco>> listar(@RequestParam(required = false) Long clienteId) {
-        var registros = servico.listar(clienteId);
-        var proprio = linkTo(methodOn(EnderecoControle.class).listar(clienteId)).withSelfRel().expand();
-        if (clienteId != null && registros.isEmpty()) {
-            proprio = proprio.andAffordance(afford(methodOn(EnderecoControle.class).criarEndereco(clienteId, null)));
+    public CollectionModel<EntityModel<Endereco>> listar(@RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false) Long empresaId) {
+        var registros = servico.listar(usuarioId, empresaId);
+        var proprio = linkTo(methodOn(EnderecoControle.class).listar(usuarioId, empresaId)).withSelfRel().expand();
+        if (usuarioId != null) {
+            return Colecoes.de(registros, representacao, Endereco.class,
+                    registros.isEmpty() ? proprio.andAffordance(afford(methodOn(EnderecoControle.class).criarEndereco(usuarioId, null, null))) : proprio,
+                    Ligacoes.usuario(usuarioId, "usuario"));
         }
-        var modelo = CollectionModel.of(registros.stream().map(representacao::toModel).toList(), proprio,
-                linkTo(methodOn(RaizControle.class).inicio()).withRel("inicio").expand())
-                .withFallbackType(EntityModel.class, Endereco.class);
-        if (clienteId != null) {
-            modelo.add(linkTo(methodOn(ClienteControle.class).buscar(clienteId)).withRel("cliente").expand());
-        } else {
-            modelo.add(linkTo(methodOn(ClienteControle.class).listar()).withRel("clientes").expand());
+        if (empresaId != null) {
+            return Colecoes.de(registros, representacao, Endereco.class,
+                    registros.isEmpty() ? proprio.andAffordance(afford(methodOn(EnderecoControle.class).criarEndereco(null, empresaId, null))) : proprio,
+                    Ligacoes.empresa(empresaId, "empresa"));
         }
-        return modelo;
+        return Colecoes.de(registros, representacao, Endereco.class, proprio);
     }
 
     @GetMapping("/{id}")
@@ -43,15 +44,16 @@ public class EnderecoControle {
         return representacao.toModel(servico.buscar(id));
     }
 
+    /** Cadastra o endereco de um usuario (usuarioId) ou de uma empresa (empresaId); cada um possui no maximo um. */
     @PostMapping(consumes = "application/json")
-    public ResponseEntity<EntityModel<Endereco>> criarEndereco(@RequestParam long clienteId,
-            @Valid @RequestBody Endereco dados) {
-        var modelo = representacao.toModel(servico.criar(clienteId, dados));
-        return ResponseEntity.created(modelo.getRequiredLink("self").toUri()).body(modelo);
+    public ResponseEntity<EntityModel<Endereco>> criarEndereco(@RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false) Long empresaId, @Valid @RequestBody EnderecoRequisicao dados) {
+        var modelo = representacao.toModel(servico.criar(usuarioId, empresaId, dados));
+        return ResponseEntity.created(modelo.getRequiredLink(IanaLinkRelations.SELF).toUri()).body(modelo);
     }
 
     @PutMapping(value = "/{id}", consumes = "application/json")
-    public EntityModel<Endereco> atualizarEndereco(@PathVariable long id, @Valid @RequestBody Endereco dados) {
+    public EntityModel<Endereco> atualizarEndereco(@PathVariable long id, @Valid @RequestBody EnderecoRequisicao dados) {
         return representacao.toModel(servico.atualizar(id, dados));
     }
 

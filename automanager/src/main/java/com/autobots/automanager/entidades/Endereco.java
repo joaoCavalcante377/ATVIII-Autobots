@@ -1,38 +1,30 @@
 package com.autobots.automanager.entidades;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.hateoas.server.core.Relation;
 
-import lombok.Data;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
-
-@Data
-@org.springframework.hateoas.server.core.Relation(itemRelation = "endereco", collectionRelation = "enderecos")
+@Getter
+@Setter
 @Entity
+@Relation(itemRelation = "endereco", collectionRelation = "enderecos")
 public class Endereco {
-	@Id()
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
-	@Column(nullable = true)
-	private String estado;
-	@Column(nullable = false)
-	@NotBlank
-	private String cidade;
-	@Column(nullable = true)
-	private String bairro;
-	@Column(nullable = false)
-	@NotBlank
-	private String rua;
-	@Column(nullable = false)
-	@NotBlank
-	private String numero;
-	@Column(nullable = true)
-	private String codigoPostal;
-	@Column(unique = false, nullable = true)
-	private String informacoesAdicionais;
-
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false)
+    private String estado;
+    @Column(nullable = false)
+    private String cidade;
+    @Column(nullable = false)
+    private String bairro;
+    @Column(nullable = false)
+    private String rua;
+    @Column(nullable = false)
+    private String numero;
+    @Column(nullable = false)
+    private String codigoPostal;
+    @Column
+    private String informacoesAdicionais;
 }

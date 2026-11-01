@@ -1,26 +1,25 @@
 package com.autobots.automanager.entidades;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import java.time.LocalDate;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.hateoas.server.core.Relation;
+import com.autobots.automanager.enumeracoes.TipoDocumento;
 
-import lombok.Data;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
-
-@Data
-@org.springframework.hateoas.server.core.Relation(itemRelation = "documento", collectionRelation = "documentos")
+@Getter
+@Setter
 @Entity
+@Relation(itemRelation = "documento", collectionRelation = "documentos")
 public class Documento {
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
-	@Column
-	@NotBlank
-	private String tipo;
-	@Column(unique = true)
-	@NotBlank
-	private String numero;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TipoDocumento tipo;
+    @Column(nullable = false)
+    private LocalDate dataEmissao;
+    @Column(nullable = false, unique = true)
+    private String numero;
 }

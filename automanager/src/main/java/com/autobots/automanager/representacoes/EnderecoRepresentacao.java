@@ -1,12 +1,12 @@
 package com.autobots.automanager.representacoes;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.RepresentationModelAssembler;
 import org.springframework.stereotype.Component;
-import com.autobots.automanager.controles.*;
+import com.autobots.automanager.controles.EnderecoControle;
 import com.autobots.automanager.entidades.Endereco;
 import com.autobots.automanager.servicos.EnderecoServico;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @Component
 public class EnderecoRepresentacao implements RepresentationModelAssembler<Endereco, EntityModel<Endereco>> {
@@ -17,16 +17,16 @@ public class EnderecoRepresentacao implements RepresentationModelAssembler<Ender
     }
 
     @Override
-    public EntityModel<Endereco> toModel(Endereco dado) {
+    public EntityModel<Endereco> toModel(Endereco endereco) {
+        long id = endereco.getId();
         var controle = methodOn(EnderecoControle.class);
-        var proprio = linkTo(controle.buscar(dado.getId())).withSelfRel().expand()
-                .andAffordance(afford(controle.atualizarEndereco(dado.getId(), null)))
-                .andAffordance(afford(controle.excluirEndereco(dado.getId())));
-        var modelo = EntityModel.of(dado, proprio,
-                linkTo(controle.listar(null)).withRel("enderecos").expand(),
-                linkTo(methodOn(RaizControle.class).inicio()).withRel("inicio").expand());
-        servico.clienteId(dado.getId()).ifPresent(id -> modelo.add(
-                linkTo(methodOn(ClienteControle.class).buscar(id)).withRel("cliente").expand()));
+        var modelo = EntityModel.of(endereco,
+                linkTo(controle.buscar(id)).withSelfRel().expand()
+                        .andAffordance(afford(controle.atualizarEndereco(id, null)))
+                        .andAffordance(afford(controle.excluirEndereco(id))),
+                linkTo(controle.listar(null, null)).withRel("enderecos").expand(), Ligacoes.inicio());
+        servico.usuarioDe(id).ifPresent(dono -> modelo.add(Ligacoes.usuario(dono, "usuario")));
+        servico.empresaDe(id).ifPresent(dono -> modelo.add(Ligacoes.empresa(dono, "empresa")));
         return modelo;
     }
 }
